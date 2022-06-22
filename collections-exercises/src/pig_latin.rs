@@ -6,37 +6,30 @@ pub const NAME: &str = "Pig Latin";
 // Words that start with a vowel have “hay” added to the end instead (“apple”
 // becomes “apple-hay”). Keep in mind the details about UTF-8 encoding!
 
-use std::io;
+use std::io::{self, Write};
 
 pub fn run() {
     println!("Input a message:");
     let input = util::with_write_buffer_(|buf| {
         io::stdin().read_line(buf).expect("Stdin failure");
     });
-    let result = util::with_write_buffer_(|buf| {
-        util::transform_words(to_pig_latin_word, &input, buf);
-    });
-    println!("{}", result);
+    util::transform_words(to_pig_latin_word, &input, &mut io::stdout().lock())
+        .expect("Stdout failure");
 }
 
-fn to_pig_latin_word(word: &str, output: &mut String) {
+fn to_pig_latin_word<Out: Write>(word: &str, output: &mut Out) -> io::Result<()> {
+    fn is_vowel(c: char) -> bool {
+        "AEIOUaeiou".contains(c)
+    }
     let mut chars = word.chars();
     if let Some(first_char) = chars.next() {
         if is_vowel(first_char) {
-            output.push(first_char);
-            output.push_str(chars.as_str());
-            output.push_str("-hay");
+            output.write_fmt(format_args!("{}{}-hay", first_char, chars.as_str()))?;
         } else {
-            output.push_str(chars.as_str());
-            output.push('-');
-            output.push(first_char);
-            output.push_str("ay");
+            output.write_fmt(format_args!("{}-{}ay", chars.as_str(), first_char))?;
         }
     }
-}
-
-fn is_vowel(c: char) -> bool {
-    "AEIOUaeiou".contains(c)
+    Result::Ok(())
 }
 
 mod util {
@@ -56,11 +49,13 @@ mod util {
         with_write_buffer(action).1
     }
 
-    pub fn transform_words(
-        transform: fn(&str, &mut String) -> (),
+    use std::io::{self, Write};
+
+    pub fn transform_words<Out: Write>(
+        transform: fn(&str, &mut Out) -> io::Result<()>,
         input: &str,
-        output: &mut String,
-    ) {
+        output: &mut Out,
+    ) -> io::Result<()> {
         let mut word_start = None;
         for (c_pos, c) in input.char_indices() {
             if c.is_alphabetic() {
@@ -69,11 +64,12 @@ mod util {
                 }
             } else {
                 if let Some(word_start_pos) = word_start {
-                    transform(&input[word_start_pos..c_pos], output);
+                    transform(&input[word_start_pos..c_pos], output)?;
                     word_start = None;
                 }
-                output.push(c);
+                output.write_fmt(format_args!("{}", c))?;
             }
         }
+        Result::Ok(())
     }
 }
