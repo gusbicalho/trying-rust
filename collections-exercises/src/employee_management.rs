@@ -54,6 +54,7 @@ fn prompt() -> Option<String> {
 }
 
 mod registry {
+    use super::util;
     use std::collections::HashMap;
     static EMPTY_VEC: Vec<String> = Vec::new();
 
@@ -69,12 +70,12 @@ mod registry {
     }
     impl Registry {
         pub fn add_employee(&mut self, name: &str, department: &str) {
-            insert_sorted_unique(&mut self.all_employees, name);
-            insert_sorted_unique(
+            util::insert_sorted_unique(&mut self.all_employees, name.to_string());
+            util::insert_sorted_unique(
                 self.employees_by_department
                     .entry(department.to_string())
                     .or_insert(vec![]),
-                name,
+                name.to_string(),
             );
         }
         pub fn list_people(&self, department: Option<&str>) -> std::slice::Iter<'_, String> {
@@ -87,25 +88,10 @@ mod registry {
             }
         }
     }
-
-    fn insert_sorted_unique(vec: &mut Vec<String>, new_s: &str) {
-        fn find_index(vec: &[String], target: &str) -> Option<usize> {
-            for (i, s) in vec.iter().enumerate() {
-                match (&s[..]).cmp(target) {
-                    std::cmp::Ordering::Equal => return None,
-                    std::cmp::Ordering::Greater => return Some(i),
-                    std::cmp::Ordering::Less => continue,
-                }
-            }
-            Some(vec.len())
-        }
-        if let Some(index) = find_index(vec, new_s) {
-            vec.insert(index, new_s.to_string());
-        }
-    }
 }
 
 mod commands {
+    // TODO detailed parse errors :shrug:
     pub struct ParseError {}
 
     use std::str::FromStr;
@@ -159,6 +145,25 @@ mod commands {
             Ok(Report {
                 department: parts.next().map(str::trim).map(String::from),
             })
+        }
+    }
+}
+
+mod util {
+    use std::cmp::Ordering;
+    pub fn insert_sorted_unique<T: Ord>(vec: &mut Vec<T>, new_s: T) {
+        fn find_index<T: Ord>(vec: &[T], target: &T) -> Option<usize> {
+            for (i, s) in vec.iter().enumerate() {
+                match s.cmp(target) {
+                    Ordering::Equal => return None,
+                    Ordering::Greater => return Some(i),
+                    Ordering::Less => continue,
+                }
+            }
+            Some(vec.len())
+        }
+        if let Some(index) = find_index(vec, &new_s) {
+            vec.insert(index, new_s);
         }
     }
 }
