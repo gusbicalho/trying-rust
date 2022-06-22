@@ -61,14 +61,16 @@ mod util {
         input: &str,
         output: &mut String,
     ) {
-        let mut word = String::new();
-        for c in input.chars() {
+        let mut word_start = None;
+        for (c_pos, c) in input.char_indices() {
             if c.is_alphabetic() {
-                word.push(c)
+                if word_start.is_none() {
+                    word_start = Some(c_pos);
+                }
             } else {
-                if !word.is_empty() {
-                    transform(&word, output);
-                    word.clear();
+                if let Some(word_start_pos) = word_start {
+                    transform(&input[word_start_pos..c_pos], output);
+                    word_start = None;
                 }
                 output.push(c);
             }
