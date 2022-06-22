@@ -10,25 +10,13 @@ use std::io;
 
 pub fn run() {
     println!("Input a message:");
-    let mut input = String::new();
-    io::stdin().read_line(&mut input).expect("Stdin failure");
-    let input = input;
-    let mut output = String::new();
-    {
-        let mut word = String::new();
-        for c in input.chars() {
-            if c.is_alphabetic() {
-                word.push(c)
-            } else {
-                if !word.is_empty() {
-                    to_pig_latin_word(&word, &mut output);
-                    word.clear();
-                }
-                output.push(c);
-            }
-        }
-    }
-    println!("{}", output);
+    let input = util::with_write_buffer_(|buf| {
+        io::stdin().read_line(buf).expect("Stdin failure");
+    });
+    let result = util::with_write_buffer_(|buf| {
+        util::transform_words(to_pig_latin_word, &input, buf);
+    });
+    println!("{}", result);
 }
 
 fn to_pig_latin_word(word: &str, output: &mut String) {
@@ -49,4 +37,41 @@ fn to_pig_latin_word(word: &str, output: &mut String) {
 
 fn is_vowel(c: char) -> bool {
     "AEIOUaeiou".contains(c)
+}
+
+mod util {
+    pub fn with_write_buffer<F, R>(action: F) -> (R, String)
+    where
+        F: FnOnce(&mut String) -> R,
+    {
+        let mut output = String::new();
+        let result = action(&mut output);
+        (result, output)
+    }
+
+    pub fn with_write_buffer_<F>(action: F) -> String
+    where
+        F: FnOnce(&mut String),
+    {
+        with_write_buffer(action).1
+    }
+
+    pub fn transform_words(
+        transform: fn(&str, &mut String) -> (),
+        input: &str,
+        output: &mut String,
+    ) {
+        let mut word = String::new();
+        for c in input.chars() {
+            if c.is_alphabetic() {
+                word.push(c)
+            } else {
+                if !word.is_empty() {
+                    transform(&word, output);
+                    word.clear();
+                }
+                output.push(c);
+            }
+        }
+    }
 }
