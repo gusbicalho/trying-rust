@@ -6,17 +6,10 @@ pub const NAME: &str = "Employee Management";
 // a list of all people in a department or all people in the company by
 // department, sorted alphabetically.
 
-use std::io::{self, Write};
-
 pub fn run() {
     println!("{}", NAME);
     let mut registry = registry::new();
-
-    loop {
-        let line = match prompt() {
-            None => break,
-            Some(line) => line,
-        };
+    for line in prompt::prompts("> ") {
         use commands::Command;
         match line.parse() {
             Err(_) => {
@@ -36,20 +29,53 @@ pub fn run() {
     }
 }
 
-fn prompt() -> Option<String> {
-    let mut buffer = String::new();
-    {
-        let mut stdout = io::stdout().lock();
-        stdout
-            .write_fmt(format_args!("> "))
-            .expect("Stdout failure");
-        stdout.flush().expect("Stdout failure");
+mod prompt {
+    use std::io::{self, Write};
+    use std::iter::{Fuse, Iterator};
+
+    pub fn prompt(prompt: &str) -> Option<String> {
+        let mut buffer = String::new();
+        {
+            let mut stdout = io::stdout().lock();
+            stdout
+                .write_fmt(format_args!("{}", prompt))
+                .ok()?;
+            stdout.flush().ok()?;
+        }
+        io::stdin().read_line(&mut buffer).ok()?;
+        trim_in_place(&mut buffer);
+        if buffer.is_empty() {
+            None
+        } else {
+            Some(buffer)
+        }
     }
-    io::stdin().read_line(&mut buffer).ok()?;
-    if buffer.is_empty() {
-        None
-    } else {
-        Some(buffer)
+
+    // from https://users.rust-lang.org/t/trim-string-in-place/15809/9
+    fn trim_in_place(this:&mut String){
+        let trimmed: &str = this.trim();
+        let trim_start=trimmed.as_ptr()as usize-this.as_ptr()as usize;
+        let trim_len  =trimmed.len();
+        if trim_start!=0{
+            this.drain(..trim_start);
+        }
+        this.truncate(trim_len);
+    }
+
+
+    pub fn prompts(prompt: &str) -> Fuse<StdPromptIter> {
+        StdPromptIter{ prompt: prompt.to_string()}.fuse()
+    }
+
+    pub struct StdPromptIter {
+        prompt: String,
+    }
+    impl Iterator for StdPromptIter {
+        type Item = String;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            prompt(&self.prompt)
+        }
     }
 }
 
