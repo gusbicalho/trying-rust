@@ -31,7 +31,7 @@ pub fn run() {
 
 mod prompt {
     use std::io::{self, Write};
-    use std::iter::{Fuse, Iterator};
+    use std::iter::{Iterator};
 
     pub fn prompt(prompt: &str) -> Option<String> {
         let mut buffer = String::new();
@@ -63,7 +63,7 @@ mod prompt {
     }
 
 
-    pub fn prompts(prompt: &str) -> Fuse<StdPromptIter> {
+    pub fn prompts(prompt: &str) -> impl Iterator<Item = String> {
         StdPromptIter{ prompt: prompt.to_string()}.fuse()
     }
 
