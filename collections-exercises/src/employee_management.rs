@@ -31,19 +31,18 @@ pub fn run() {
 
 mod prompt {
     use std::io::{self, Write};
-    use std::iter::{Iterator};
+    use std::iter::Iterator;
+    use super::util;
 
     pub fn prompt(prompt: &str) -> Option<String> {
         let mut buffer = String::new();
         {
             let mut stdout = io::stdout().lock();
-            stdout
-                .write_fmt(format_args!("{}", prompt))
-                .ok()?;
+            stdout.write_fmt(format_args!("{}", prompt)).ok()?;
             stdout.flush().ok()?;
         }
         io::stdin().read_line(&mut buffer).ok()?;
-        trim_in_place(&mut buffer);
+        util::trim_in_place(&mut buffer);
         if buffer.is_empty() {
             None
         } else {
@@ -51,20 +50,11 @@ mod prompt {
         }
     }
 
-    // from https://users.rust-lang.org/t/trim-string-in-place/15809/9
-    fn trim_in_place(this:&mut String){
-        let trimmed: &str = this.trim();
-        let trim_start=trimmed.as_ptr()as usize-this.as_ptr()as usize;
-        let trim_len  =trimmed.len();
-        if trim_start!=0{
-            this.drain(..trim_start);
-        }
-        this.truncate(trim_len);
-    }
-
-
     pub fn prompts(prompt: &str) -> impl Iterator<Item = String> {
-        StdPromptIter{ prompt: prompt.to_string()}.fuse()
+        StdPromptIter {
+            prompt: prompt.to_string(),
+        }
+        .fuse()
     }
 
     pub struct StdPromptIter {
@@ -190,6 +180,45 @@ mod util {
         }
         if let Some(index) = find_index(vec, &new_s) {
             vec.insert(index, new_s);
+        }
+    }
+
+    // from https://users.rust-lang.org/t/trim-string-in-place/15809/9
+    pub fn trim_in_place(this: &mut String) {
+        let trimmed: &str = this.trim();
+        let trim_start = trimmed.as_ptr() as usize - this.as_ptr() as usize;
+        let trim_len = trimmed.len();
+        if trim_start != 0 {
+            this.drain(..trim_start);
+        }
+        this.truncate(trim_len);
+    }
+
+    #[cfg(test)]
+    mod trim_in_place_tests {
+        use super::*;
+
+        #[test]
+        fn nothing_to_trim() {
+            check_trimmed("such content wow", "such content wow");
+        }
+        #[test]
+        fn trim_left() {
+            check_trimmed(" \n\tsuch content wow", "such content wow");
+        }
+        #[test]
+        fn trim_right() {
+            check_trimmed("such content wow \r\n \t", "such content wow");
+        }
+        #[test]
+        fn trim_both() {
+            check_trimmed(" \n\tsuch content wow \r\n \t", "such content wow");
+        }
+
+        fn check_trimmed(original: &str, trimmed: &str) {
+            let mut s = original.to_string();
+            trim_in_place(&mut s);
+            assert_eq!(s, trimmed);
         }
     }
 }
