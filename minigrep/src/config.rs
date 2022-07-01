@@ -8,10 +8,13 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_strings(args: &mut impl Iterator<Item = String>) -> Result<Config, String> {
+    pub fn from_strings(
+        mut args: impl Iterator<Item = String>,
+        get_env: impl Fn(&str) -> Option<String>,
+    ) -> Result<Config, String> {
         let search_string = args.next().ok_or("Missing search string")?;
         let filename = args.next().ok_or("Missing filename")?;
-        let case_sensitive = env::var("CASE_INSENSITIVE").is_err();
+        let case_sensitive = get_env("CASE_INSENSITIVE").is_none();
         Ok(Config {
             search_string,
             filename,
@@ -20,10 +23,11 @@ impl Config {
     }
 
     pub fn from_env() -> Result<Config, String> {
-        let mut args = env::args();
-        // skip argv[0]
-        args.next().ok_or("empty argv")?;
-        Config::from_strings(&mut args)
+        Config::from_strings(
+            // skip(1) to ignore argv[0]
+            env::args().skip(1),
+            |var_name| env::var(var_name).ok(),
+        )
     }
 }
 

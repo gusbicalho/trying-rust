@@ -1,5 +1,5 @@
 use minigrep::config::{self, Config};
-use std::io::{self, Write};
+use std::io;
 use std::process;
 
 fn main() {
