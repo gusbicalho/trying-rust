@@ -1,19 +1,20 @@
 mod config;
 use std::error::Error;
-use std::io::{self, Read, BufRead};
 
 pub use config::{print_usage, Config};
 
-use crate::parser;
+use crate::parser::{self, Parser};
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
 fn run_stmt(line: String) -> Result<(), Box<dyn Error>> {
-    match parser::parse_stmt(line) {
-        Err(parse_err) => Err(parse_err),
+    let parser = parser::parse_stmt();
+    match parser.parse_str(&line) {
+        Err(parse_err) => Err(parse_err)?,
         Ok(stmt) => {
             println!("{:#?}", stmt);
+            &parser;
             Ok(())
         }
     }
