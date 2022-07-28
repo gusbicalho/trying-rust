@@ -84,11 +84,13 @@ impl ParseStmt {
 
     fn parse_expr(&self) -> Rc<dyn Parser<Item = Expr, ParseError = String>> {
         let parse_lambda = {
-            let self2 = self.clone();
-            move || self2.parse_lambda()
+            let self_ = self.clone();
+            move || self_.parse_lambda()
         };
-        let self3 = self.clone();
-        let parse_application = move || self3.parse_application();
+        let parse_application = {
+            let self_ = self.clone();
+            move || self_.parse_application()
+        };
         self.expr_parser
             .get_or_init(|| {
                 Rc::new(
