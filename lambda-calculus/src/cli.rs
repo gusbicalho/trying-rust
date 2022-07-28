@@ -3,7 +3,7 @@ use std::error::Error;
 
 pub use config::{print_usage, Config};
 
-use crate::parser;
+use crate::pipeline::parser;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;

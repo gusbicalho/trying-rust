@@ -3,5 +3,6 @@
 #![feature(associated_type_defaults)]
 #![feature(pattern)]
 
-mod parser;
 pub mod cli;
+mod pipeline;
+mod parsers;

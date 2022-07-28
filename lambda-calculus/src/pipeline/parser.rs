@@ -1,40 +1,7 @@
-use std::rc::Rc;
-mod internals;
-use internals as parser;
+use crate::parsers::{delim, string, Parser};
+use crate::pipeline::parse_tree::{Apply, Decl, Expr, Lambda, Stmt};
 use once_cell::unsync::{Lazy, OnceCell};
-pub use parser::Parser;
-
-#[derive(Debug)]
-pub enum Stmt {
-    Expr(Expr),
-    Decl(Decl),
-}
-
-#[derive(Debug)]
-pub struct Decl {
-    pub identifier: String,
-    pub expr: Expr,
-}
-
-#[derive(Debug)]
-pub enum Expr {
-    Lambda(Box<Lambda>),
-    Apply(Box<Apply>),
-    Lookup(String),
-    LitInteger(i64),
-}
-
-#[derive(Debug)]
-pub struct Lambda {
-    pub param: String,
-    pub body: Expr,
-}
-
-#[derive(Debug)]
-pub struct Apply {
-    pub function: Expr,
-    pub argument: Expr,
-}
+use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct ParseStmt {
@@ -53,28 +20,28 @@ impl ParseStmt {
     }
 
     fn parse_stmt(&self) -> impl Parser<Item = Stmt, ParseError = String> + '_ {
-        parser::delim::whitespace()
+        delim::whitespace()
             .skip_many::<String>()
             .then(
                 (self.parse_decl())
                     .map(Stmt::Decl)
                     .falling_back((self.parse_expr()).map(Stmt::Expr)),
             )
-            .also(parser::delim::EXPECT_END)
+            .also(delim::EXPECT_END)
     }
 
     fn parse_decl(&self) -> impl Parser<Item = Decl, ParseError = String> + '_ {
-        parser::string::expect("let")
-            .then(parser::delim::whitespace().skip_at_least_one())
+        string::expect("let")
+            .then(delim::whitespace().skip_at_least_one())
             .then(self.parse_identifier())
             .also(
-                parser::delim::whitespace()
+                delim::whitespace()
                     .skip_at_least_one()
-                    .then(parser::string::expect("="))
-                    .then(parser::delim::whitespace().skip_at_least_one()),
+                    .then(string::expect("="))
+                    .then(delim::whitespace().skip_at_least_one()),
             )
             .paired_with(self.parse_expr())
-            .also(parser::delim::whitespace().skip_many())
+            .also(delim::whitespace().skip_many())
             .map(|(identifier, expr)| Decl { identifier, expr })
     }
 
@@ -92,19 +59,19 @@ impl ParseStmt {
                 Rc::new(
                     Lazy::new(parse_lambda)
                         .falling_back(Lazy::new(parse_application))
-                        .also(parser::delim::whitespace().skip_many()),
+                        .also(delim::whitespace().skip_many()),
                 )
             })
             .clone()
     }
 
     fn parse_lambda(&self) -> impl Parser<Item = Expr, ParseError = String> {
-        parser::string::expect("\\")
-            .also(parser::delim::whitespace().skip_many())
+        string::expect("\\")
+            .also(delim::whitespace().skip_many())
             .then(self.parse_identifier())
-            .also(parser::delim::whitespace().skip_many())
-            .also(parser::string::expect("->"))
-            .also(parser::delim::whitespace().skip_many())
+            .also(delim::whitespace().skip_many())
+            .also(string::expect("->"))
+            .also(delim::whitespace().skip_many())
             .paired_with(self.parse_expr())
             .map(|(param, body)| Expr::Lambda(Box::new(Lambda { param, body })))
     }
@@ -133,16 +100,16 @@ impl ParseStmt {
     }
 
     fn parse_parens(&self) -> impl Parser<Item = Expr, ParseError = String> {
-        parser::string::expect("(")
-            .also(parser::delim::whitespace().skip_many())
+        string::expect("(")
+            .also(delim::whitespace().skip_many())
             .then(self.parse_expr())
-            .also(parser::delim::whitespace().skip_many())
-            .also(parser::string::expect(")"))
-            .also(parser::delim::whitespace().skip_many())
+            .also(delim::whitespace().skip_many())
+            .also(string::expect(")"))
+            .also(delim::whitespace().skip_many())
     }
 
     fn parse_identifier(&self) -> impl Parser<Item = String, ParseError = String> {
-        parser::string::many_chars_matching(|c| char::is_ascii_lowercase(&c))
+        string::many_chars_matching(|c| char::is_ascii_lowercase(&c))
             .validate(|identifier| {
                 if identifier.is_empty() {
                     Some("Expected identifier (sequence of lowercase ascii letters)".to_string())
@@ -150,25 +117,23 @@ impl ParseStmt {
                     None
                 }
             })
-            .also(parser::delim::whitespace().skip_many())
+            .also(delim::whitespace().skip_many())
     }
 
     fn parse_literal_integer(&self) -> impl Parser<Item = i64, ParseError = String> {
-        parser::string::expect("-")
+        string::expect("-")
             .map(|_| false)
-            .falling_back(parser::string::expect("+").map(|_| true))
+            .falling_back(string::expect("+").map(|_| true))
             .paired_with(
-                parser::string::many_chars_matching(|c: char| c.is_ascii_digit()).validate(
-                    |digits| {
-                        if digits.is_empty() {
-                            Some("Expected sequence of digits".to_string())
-                        } else {
-                            None
-                        }
-                    },
-                ),
+                string::many_chars_matching(|c: char| c.is_ascii_digit()).validate(|digits| {
+                    if digits.is_empty() {
+                        Some("Expected sequence of digits".to_string())
+                    } else {
+                        None
+                    }
+                }),
             )
-            .also(parser::delim::whitespace().skip_many())
+            .also(delim::whitespace().skip_many())
             .map(|(is_positive, digits)| {
                 let abs_val = digits.parse::<i64>().unwrap_or(0);
                 if is_positive {
