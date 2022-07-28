@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 rustyline = "10.0.0"
 derivative = "2.2.0"
+once_cell = "1.13.0"

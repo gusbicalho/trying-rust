@@ -3,24 +3,22 @@ use std::error::Error;
 
 pub use config::{print_usage, Config};
 
-use crate::parser::{self, Parser};
+use crate::parser;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
 fn run_stmt(line: String) -> Result<(), Box<dyn Error>> {
-    let parser = parser::parse_stmt();
-    match parser.parse_str(&line) {
+    match parser::ParseStmt::new().parse(&line) {
         Err(parse_err) => Err(parse_err)?,
         Ok(stmt) => {
             println!("{:#?}", stmt);
-            &parser;
             Ok(())
         }
     }
 }
 
-pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
+pub fn run(_config: &Config) -> Result<(), Box<dyn Error>> {
     let mut rl = Editor::<()>::new()?;
     loop {
         let readline = rl.readline(">> ");

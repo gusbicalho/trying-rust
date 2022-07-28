@@ -4,7 +4,7 @@ use std::{env, io};
 pub struct Config {}
 
 impl Config {
-    pub fn from_strings(arg_strs: impl Iterator<Item = String>) -> Result<Config, String> {
+    pub fn from_strings(_arg_strs: impl Iterator<Item = String>) -> Result<Config, String> {
         let result = Config {};
         Ok(result)
     }

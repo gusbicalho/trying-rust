@@ -1,10 +1,12 @@
+#![allow(dead_code)]
+
 use std::{error::Error, ops::Deref};
 
 use self::adapters::{
-    also::Also, at_least_one::AtLeastOne, backtracking::Backtracking, bind::Bind,
-    falling_back::FallingBack, looking_ahead::LookingAhead, many::Many, map::Map, map_err::MapErr,
-    optional::Optional, paired_with::PairedWith, skip_many::SkipMany, then::Then,
-    validate::Validate, with_span::WithSpan,
+    also::Also, at_least_one::AtLeastOne, backtracking::Backtracking, falling_back::FallingBack,
+    looking_ahead::LookingAhead, many::Many, map::Map, map_err::MapErr, optional::Optional,
+    paired_with::PairedWith, skip_many::SkipMany, then::Then, validate::Validate,
+    with_span::WithSpan,
 };
 
 #[derive(Clone)]
@@ -56,12 +58,13 @@ impl<'a> ParserState<'a> {
     }
 }
 
-pub trait Parser<'a> {
+pub trait Parser {
     type Item;
     type ParseError = Box<dyn Error>;
-    fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError>;
+    fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError>;
 
-    fn parse_str(&'a self, text: &'a str) -> Result<Self::Item, Self::ParseError> {
+    fn parse_str(&self, text: &str) -> Result<Self::Item, Self::ParseError> {
+        println!("parse_str");
         self.parse(&mut ParserState::new(text))
     }
 
@@ -75,7 +78,7 @@ pub trait Parser<'a> {
     fn map_err<E2, F: Fn(Self::ParseError) -> E2>(self, transform: F) -> MapErr<Self, F>
     where
         Self: std::marker::Sized,
-        MapErr<Self, F>: Parser<'a, ParseError = E2>,
+        MapErr<Self, F>: Parser<ParseError = E2>,
     {
         MapErr::new(self, transform)
     }
@@ -83,7 +86,7 @@ pub trait Parser<'a> {
     fn validate<F>(self, validate: F) -> Validate<Self, F>
     where
         Self: std::marker::Sized,
-        Validate<Self, F>: Parser<'a>,
+        Validate<Self, F>: Parser,
     {
         Validate::new(self, validate)
     }
@@ -91,12 +94,12 @@ pub trait Parser<'a> {
     fn map_err_into<E2>(self) -> MapErr<Self, fn(Self::ParseError) -> E2>
     where
         Self: std::marker::Sized,
-        E2: From<Self::ParseError> + 'a,
+        E2: From<Self::ParseError>,
     {
         self.map_err(Into::into)
     }
 
-    fn optional<E>(self) -> Optional<Self, E>
+    fn optional(self) -> Optional<Self>
     where
         Self: std::marker::Sized,
     {
@@ -120,7 +123,7 @@ pub trait Parser<'a> {
     fn falling_back<P2>(self, fallback_parser: P2) -> FallingBack<Self, P2>
     where
         Self: std::marker::Sized,
-        FallingBack<Self, P2>: Parser<'a>,
+        FallingBack<Self, P2>: Parser,
     {
         FallingBack::new(self, fallback_parser)
     }
@@ -128,7 +131,7 @@ pub trait Parser<'a> {
     fn then<P2>(self, next_parser: P2) -> Then<Self, P2>
     where
         Self: std::marker::Sized,
-        Then<Self, P2>: Parser<'a>,
+        Then<Self, P2>: Parser,
     {
         Then::new(self, next_parser)
     }
@@ -136,7 +139,7 @@ pub trait Parser<'a> {
     fn also<P2>(self, next_parser: P2) -> Also<Self, P2>
     where
         Self: std::marker::Sized,
-        Also<Self, P2>: Parser<'a>,
+        Also<Self, P2>: Parser,
     {
         Also::new(self, next_parser)
     }
@@ -144,17 +147,9 @@ pub trait Parser<'a> {
     fn paired_with<P2>(self, next_parser: P2) -> PairedWith<Self, P2>
     where
         Self: std::marker::Sized,
-        PairedWith<Self, P2>: Parser<'a>,
+        PairedWith<Self, P2>: Parser,
     {
         PairedWith::new(self, next_parser)
-    }
-
-    fn bind<F>(self, make_next_parser: F) -> Bind<Self, F>
-    where
-        Self: std::marker::Sized,
-        Bind<Self, F>: Parser<'a>,
-    {
-        Bind::new(self, make_next_parser)
     }
 
     fn many<E>(self) -> Many<Self, E>
@@ -193,16 +188,16 @@ pub trait Parser<'a> {
     }
 }
 
-impl<'a, T> Parser<'a> for T
+impl<T> Parser for T
 where
     T: Deref,
-    <T as Deref>::Target: Parser<'a>,
+    <T as Deref>::Target: Parser,
 {
-    type Item = <<T as Deref>::Target as Parser<'a>>::Item;
+    type Item = <<T as Deref>::Target as Parser>::Item;
 
-    type ParseError = <<T as Deref>::Target as Parser<'a>>::ParseError;
+    type ParseError = <<T as Deref>::Target as Parser>::ParseError;
 
-    fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+    fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
         (**self).parse(state)
     }
 }
@@ -226,16 +221,16 @@ pub mod adapters {
             }
         }
 
-        impl<'a, P, F, I2> Parser<'a> for Map<P, F>
+        impl<P, F, I2> Parser for Map<P, F>
         where
-            P: Parser<'a>,
+            P: Parser,
             F: Fn(P::Item) -> I2,
         {
             type Item = I2;
 
             type ParseError = P::ParseError;
 
-            fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+            fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
                 self.parser.parse(state).map(&self.transform)
             }
         }
@@ -259,16 +254,16 @@ pub mod adapters {
             }
         }
 
-        impl<'a, P, F> Parser<'a> for Validate<P, F>
+        impl<P, F> Parser for Validate<P, F>
         where
-            P: Parser<'a>,
+            P: Parser,
             F: Fn(&P::Item) -> Option<P::ParseError>,
         {
             type Item = P::Item;
 
             type ParseError = P::ParseError;
 
-            fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+            fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
                 match self.parser.parse(state) {
                     Err(err) => Err(err),
                     Ok(val) => match (self.validate)(&val) {
@@ -298,16 +293,16 @@ pub mod adapters {
             }
         }
 
-        impl<'a, P, F, E2> Parser<'a> for MapErr<P, F>
+        impl<P, F, E2> Parser for MapErr<P, F>
         where
-            P: Parser<'a>,
+            P: Parser,
             F: Fn(P::ParseError) -> E2,
         {
             type Item = P::Item;
 
             type ParseError = E2;
 
-            fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+            fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
                 self.parser.parse(state).map_err(&self.transform)
             }
         }
@@ -327,15 +322,15 @@ pub mod adapters {
             }
         }
 
-        impl<'a, P> Parser<'a> for Backtracking<P>
+        impl<P> Parser for Backtracking<P>
         where
-            P: Parser<'a>,
+            P: Parser,
         {
             type Item = P::Item;
 
             type ParseError = P::ParseError;
 
-            fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+            fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
                 let backup = state.clone();
                 match self.parser.parse(state) {
                     Ok(r) => Ok(r),
@@ -350,40 +345,40 @@ pub mod adapters {
 
     pub mod optional {
         use super::super::{Parser, ParserState};
-        use std::marker::PhantomData;
 
         #[derive(Copy, Clone)]
-        pub struct Optional<P, E> {
+        pub struct Optional<P> {
             parser: P,
-            phantom: PhantomData<E>,
         }
 
-        impl<P, E> Optional<P, E> {
+        impl<P> Optional<P> {
             pub fn new(parser: P) -> Self {
                 Self {
                     parser,
-                    phantom: PhantomData,
                 }
             }
         }
 
-        impl<'a, P, E> Parser<'a> for Optional<P, E>
+        impl<P> Parser for Optional<P>
         where
-            P: Parser<'a>,
+            P: Parser,
         {
             type Item = Option<P::Item>;
 
-            type ParseError = E;
+            type ParseError = P::ParseError;
 
-            fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
-                let backup = state.clone();
-                Ok(match self.parser.parse(state) {
-                    Ok(r) => Some(r),
-                    Err(_) => {
-                        *state = backup;
-                        None
+            fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+                let previously_consumed = state.consumed_so_far;
+                match self.parser.parse(state) {
+                    Ok(r) => Ok(Some(r)),
+                    Err(err) => {
+                        if state.consumed_so_far == previously_consumed {
+                           Ok(None)
+                        } else {
+                            Err(err)
+                        }
                     }
-                })
+                }
             }
         }
     }
@@ -402,15 +397,15 @@ pub mod adapters {
             }
         }
 
-        impl<'a, P> Parser<'a> for LookingAhead<P>
+        impl<P> Parser for LookingAhead<P>
         where
-            P: Parser<'a>,
+            P: Parser,
         {
             type Item = P::Item;
 
             type ParseError = P::ParseError;
 
-            fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+            fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
                 self.parser.parse(&mut state.clone())
             }
         }
@@ -434,16 +429,16 @@ pub mod adapters {
             }
         }
 
-        impl<'a, P, P2> Parser<'a> for FallingBack<P, P2>
+        impl<P, P2> Parser for FallingBack<P, P2>
         where
-            P: Parser<'a>,
-            P2: Parser<'a, Item = P::Item, ParseError = P::ParseError>,
+            P: Parser,
+            P2: Parser<Item = P::Item, ParseError = P::ParseError>,
         {
             type Item = P::Item;
 
             type ParseError = P::ParseError;
 
-            fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+            fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
                 let previously_consumed = state.consumed_so_far;
                 match self.parser.parse(state) {
                     Ok(result) => Ok(result),
@@ -478,16 +473,16 @@ pub mod adapters {
             }
         }
 
-        impl<'a, P, P2> Parser<'a> for Then<P, P2>
+        impl<P, P2> Parser for Then<P, P2>
         where
-            P: Parser<'a>,
-            P2: Parser<'a, ParseError = P::ParseError>,
+            P: Parser,
+            P2: Parser<ParseError = P::ParseError>,
         {
             type Item = P2::Item;
 
             type ParseError = P::ParseError;
 
-            fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+            fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
                 self.parser.parse(state)?;
                 self.next_parser.parse(state)
             }
@@ -512,16 +507,16 @@ pub mod adapters {
             }
         }
 
-        impl<'a, P, P2> Parser<'a> for Also<P, P2>
+        impl<P, P2> Parser for Also<P, P2>
         where
-            P: Parser<'a>,
-            P2: Parser<'a, ParseError = P::ParseError>,
+            P: Parser,
+            P2: Parser<ParseError = P::ParseError>,
         {
             type Item = P::Item;
 
             type ParseError = P::ParseError;
 
-            fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+            fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
                 let result = self.parser.parse(state)?;
                 self.next_parser.parse(state)?;
                 Ok(result)
@@ -547,39 +542,19 @@ pub mod adapters {
             }
         }
 
-        impl<'a, P, P2> Parser<'a> for PairedWith<P, P2>
+        impl<P, P2> Parser for PairedWith<P, P2>
         where
-            P: Parser<'a>,
-            P2: Parser<'a, ParseError = P::ParseError>,
+            P: Parser,
+            P2: Parser<ParseError = P::ParseError>,
         {
             type Item = (P::Item, P2::Item);
 
             type ParseError = P::ParseError;
 
-            fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+            fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
                 let first = self.first_parser.parse(state)?;
                 let second = self.second_parser.parse(state)?;
                 Ok((first, second))
-            }
-        }
-    }
-
-    pub mod bind {
-        use derivative::Derivative;
-
-        #[derive(Derivative)]
-        #[derivative(Copy, Clone)]
-        pub struct Bind<P, F> {
-            parser: P,
-            make_next_parser: F,
-        }
-
-        impl<P, F> Bind<P, F> {
-            pub fn new(parser: P, make_next_parser: F) -> Self {
-                Self {
-                    parser,
-                    make_next_parser,
-                }
             }
         }
     }
@@ -601,9 +576,9 @@ pub mod adapters {
             phantom: PhantomData<E>,
         }
 
-        impl<'a, P, E> Many<P, E>
+        impl<P, E> Many<P, E>
         where
-            P: Parser<'a>,
+            P: Parser,
         {
             pub fn new(parser: P) -> Self {
                 Self {
@@ -613,15 +588,15 @@ pub mod adapters {
             }
         }
 
-        impl<'a, P, E> Parser<'a> for Many<P, E>
+        impl<P, E> Parser for Many<P, E>
         where
-            P: Parser<'a>,
+            P: Parser,
         {
             type Item = Vec<P::Item>;
 
             type ParseError = E;
 
-            fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+            fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
                 let mut results: Vec<P::Item> = vec![];
                 while let Ok(item) = self.parser.parse(state) {
                     results.push(item);
@@ -648,9 +623,9 @@ pub mod adapters {
             phantom: PhantomData<E>,
         }
 
-        impl<'a, P, E> SkipMany<P, E>
+        impl<P, E> SkipMany<P, E>
         where
-            P: Parser<'a>,
+            P: Parser,
         {
             pub fn new(parser: P) -> Self {
                 Self {
@@ -660,16 +635,16 @@ pub mod adapters {
             }
         }
 
-        impl<'a, P, E> Parser<'a> for SkipMany<P, E>
+        impl<P, E> Parser for SkipMany<P, E>
         where
-            P: Parser<'a>,
+            P: Parser,
         {
             type Item = ();
 
             type ParseError = E;
 
-            fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
-                while let Ok(_) = self.parser.parse(state) {}
+            fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+                while self.parser.parse(state).is_ok() {}
                 Ok(())
             }
         }
@@ -690,9 +665,9 @@ pub mod adapters {
             parse_more: Many<P, !>,
         }
 
-        impl<'a, P> AtLeastOne<P>
+        impl<P> AtLeastOne<P>
         where
-            P: Parser<'a> + Clone,
+            P: Parser + Clone,
         {
             pub fn new(parser: P) -> Self {
                 Self {
@@ -702,15 +677,15 @@ pub mod adapters {
             }
         }
 
-        impl<'a, P> Parser<'a> for AtLeastOne<P>
+        impl<P> Parser for AtLeastOne<P>
         where
-            P: Parser<'a>,
+            P: Parser,
         {
             type Item = (P::Item, Vec<P::Item>);
 
             type ParseError = P::ParseError;
 
-            fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+            fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
                 let first = self.parse_one.parse(state)?;
                 // Safe to unwrap because parse_more returns Result<_, !>
                 let more = self.parse_more.parse(state).unwrap();
@@ -733,15 +708,15 @@ pub mod adapters {
             }
         }
 
-        impl<'a, P> Parser<'a> for WithSpan<P>
+        impl<P> Parser for WithSpan<P>
         where
-            P: Parser<'a>,
+            P: Parser,
         {
             type Item = (P::Item, ParserSpan);
 
             type ParseError = P::ParseError;
 
-            fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+            fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
                 let start = state.current_position();
                 self.parser.parse(state).map(|result| {
                     let end = state.current_position();
@@ -763,31 +738,6 @@ pub mod pure {
 
     #[derive(Derivative)]
     #[derivative(Copy, Clone)]
-    pub struct Borrowing<R, E = !> {
-        val: R,
-        _phantom: PhantomData<E>,
-    }
-
-    pub fn borrowing<R, E>(val: R) -> Borrowing<R, E> {
-        Borrowing {
-            val,
-            _phantom: PhantomData,
-        }
-    }
-
-    impl<'a, R, E> Parser<'a> for Borrowing<R, E>
-    where
-        R: 'a,
-    {
-        type Item = &'a R;
-        type ParseError = E;
-        fn parse(&'a self, _: &mut ParserState) -> Result<&'a R, E> {
-            Ok(&self.val)
-        }
-    }
-
-    #[derive(Derivative)]
-    #[derivative(Copy, Clone)]
     pub struct Cloning<R, E = !> {
         val: R,
         _phantom: PhantomData<E>,
@@ -803,13 +753,13 @@ pub mod pure {
         }
     }
 
-    impl<'a, R, E> Parser<'a> for Cloning<R, E>
+    impl<R, E> Parser for Cloning<R, E>
     where
         R: Clone,
     {
         type Item = R;
         type ParseError = E;
-        fn parse(&'a self, _: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+        fn parse(&self, _: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
             Ok(self.val.clone())
         }
     }
@@ -824,13 +774,13 @@ pub mod pure {
         Lazy { make_result }
     }
 
-    impl<'a, F, R, E> Parser<'a> for Lazy<F>
+    impl<F, R, E> Parser for Lazy<F>
     where
         F: Fn() -> Result<R, E>,
     {
         type Item = R;
         type ParseError = E;
-        fn parse(&'a self, _: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+        fn parse(&self, _: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
             (self.make_result)()
         }
     }
@@ -854,14 +804,14 @@ pub mod one_char {
         }
     }
 
-    impl<'a, Pred, Desc> Parser<'a> for OneCharMatches<Pred, Desc>
+    impl<Pred, Desc> Parser for OneCharMatches<Pred, Desc>
     where
         Pred: Fn(char) -> bool,
         Desc: Display,
     {
         type Item = char;
         type ParseError = String;
-        fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+        fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
             match state.leftovers.chars().next() {
                 Some(c) => {
                     if (self.predicate)(c) {
@@ -885,12 +835,12 @@ pub mod one_char {
     #[derive(Copy, Clone)]
     pub struct AnyChar {}
 
-    pub static any: AnyChar = AnyChar {};
+    pub const ANY: AnyChar = AnyChar {};
 
-    impl<'a> Parser<'a> for AnyChar {
+    impl Parser for AnyChar {
         type Item = char;
         type ParseError = String;
-        fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+        fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
             match state.leftovers.chars().next() {
                 Some(c) => {
                     state.advance(c.len_utf8());
@@ -922,12 +872,12 @@ pub mod string {
             phantom: PhantomData,
         }
     }
-    impl<'a, E> Parser<'a> for Check<'a, E> {
+    impl<'a, E> Parser for Check<'a, E> {
         type Item = bool;
 
         type ParseError = E;
 
-        fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+        fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
             Ok(state.leftovers.starts_with(self.expected))
         }
     }
@@ -945,12 +895,12 @@ pub mod string {
             phantom: PhantomData,
         }
     }
-    impl<'a, E> Parser<'a> for CheckOwned<E> {
+    impl<E> Parser for CheckOwned<E> {
         type Item = bool;
 
         type ParseError = E;
 
-        fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+        fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
             check(&self.expected).parse(state)
         }
     }
@@ -964,21 +914,21 @@ pub mod string {
     pub fn expect(expected: &str) -> Expect {
         Expect { expected }
     }
-    impl<'a> Parser<'a> for Expect<'a> {
+    impl<'a> Parser for Expect<'a> {
         type Item = ();
 
         type ParseError = String;
 
-        fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+        fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
             match check::<!>(self.expected).parse(state) {
                 Ok(true) => {
                     state.advance(self.expected.len());
                     Ok(())
                 }
                 Ok(false) => Err(format!(
-                    "Expected\n  {}\"but found\n  {}",
+                    "Expected\n  {}\nbut found\n  {}",
                     self.expected,
-                    &state.leftovers[..self.expected.len()]
+                    &state.leftovers[..self.expected.len().min(state.leftovers.len())]
                 )),
                 Err(_) => unreachable!(),
             }
@@ -994,12 +944,12 @@ pub mod string {
     pub fn expect_owned(expected: String) -> ExpectOwned {
         ExpectOwned { expected }
     }
-    impl<'a> Parser<'a> for ExpectOwned {
+    impl Parser for ExpectOwned {
         type Item = ();
 
         type ParseError = String;
 
-        fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+        fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
             expect(&self.expected).parse(state)
         }
     }
@@ -1018,16 +968,17 @@ pub mod string {
         }
     }
 
-    impl<'a, Pred, E> Parser<'a> for ManyCharsMatching<Pred, E>
+    impl<Pred, E> Parser for ManyCharsMatching<Pred, E>
     where
         Pred: Fn(char) -> bool,
     {
         type Item = String;
         type ParseError = E;
-        fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+        fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
             Ok({
                 let mut s = String::new();
                 s.extend(state.leftovers.chars().take_while(|c| (self.predicate)(*c)));
+                state.advance(s.len());
                 s
             })
         }
@@ -1044,18 +995,18 @@ pub mod delim {
     #[derive(Copy, Clone)]
     pub struct ExpectEnd {}
 
-    pub static expect_end: ExpectEnd = ExpectEnd {};
+    pub const EXPECT_END: ExpectEnd = ExpectEnd {};
 
-    impl<'a> Parser<'a> for ExpectEnd {
+    impl Parser for ExpectEnd {
         type Item = ();
         type ParseError = String;
-        fn parse(&'a self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+        fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
             if state.leftovers.is_empty() {
                 Ok(())
             } else {
                 Err(format!(
                     "Expected end of input, but found {}",
-                    &state.leftovers[..10]
+                    &state.leftovers[..10.min(state.leftovers.len())]
                 ))?
             }
         }
