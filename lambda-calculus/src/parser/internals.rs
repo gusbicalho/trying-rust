@@ -64,7 +64,6 @@ pub trait Parser {
     fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError>;
 
     fn parse_str(&self, text: &str) -> Result<Self::Item, Self::ParseError> {
-        println!("parse_str");
         self.parse(&mut ParserState::new(text))
     }
 
@@ -353,9 +352,7 @@ pub mod adapters {
 
         impl<P> Optional<P> {
             pub fn new(parser: P) -> Self {
-                Self {
-                    parser,
-                }
+                Self { parser }
             }
         }
 
@@ -373,7 +370,7 @@ pub mod adapters {
                     Ok(r) => Ok(Some(r)),
                     Err(err) => {
                         if state.consumed_so_far == previously_consumed {
-                           Ok(None)
+                            Ok(None)
                         } else {
                             Err(err)
                         }
