@@ -1,4 +1,4 @@
-use crate::parsers::{delim, pure, string, Parser, ParserState};
+use crate::parsers::{delim, pure, string, Parser};
 use crate::pipeline::parse_tree::{Apply, Decl, Expr, Lambda, Stmt};
 use std::rc::Rc;
 
