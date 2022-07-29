@@ -45,19 +45,15 @@ fn lambda() -> impl Parser<Item = Expr, ParseError = String> {
         .also(delim::whitespace().skip_many())
         .also(string::expect("->"))
         .also(delim::whitespace().skip_many())
-        // .paired_with(expr())
         .paired_with(pure::run(|state| expr().parse(state)))
         .map(|(param, body)| Expr::Lambda(Box::new(Lambda { param, body })))
 }
 
 fn application() -> impl Parser<Item = Expr, ParseError = String> {
     Rc::new(
-        parens(
-            // .paired_with(expr())
-            pure::run(|state| expr().parse(state)),
-        )
-        .falling_back(identifier().map(Expr::Lookup))
-        .falling_back(literal_integer().map(Expr::LitInteger)),
+        parens(pure::run(|state| expr().parse(state)))
+            .falling_back(identifier().map(Expr::Lookup))
+            .falling_back(literal_integer().map(Expr::LitInteger)),
     )
     .at_least_one()
     // at the end of an application series, we may have a trailing lambda
