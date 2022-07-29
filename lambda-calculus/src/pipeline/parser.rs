@@ -1,4 +1,4 @@
-use crate::parsers::{delim, pure, string, Parser};
+use crate::parsers::{delim, pure, string, Parser, ParserState};
 use crate::pipeline::parse_tree::{Apply, Decl, Expr, Lambda, Stmt};
 use std::rc::Rc;
 
@@ -38,6 +38,10 @@ fn expr() -> impl Parser<Item = Expr, ParseError = String> {
         .also(delim::whitespace().skip_many())
 }
 
+fn expr_rec() -> impl Parser<Item = Expr, ParseError = String> {
+    pure::run(|state| expr().parse(state))
+}
+
 fn lambda() -> impl Parser<Item = Expr, ParseError = String> {
     string::expect("\\")
         .also(delim::whitespace().skip_many())
@@ -45,13 +49,13 @@ fn lambda() -> impl Parser<Item = Expr, ParseError = String> {
         .also(delim::whitespace().skip_many())
         .also(string::expect("->"))
         .also(delim::whitespace().skip_many())
-        .paired_with(pure::run(|state| expr().parse(state)))
+        .paired_with(expr_rec())
         .map(|(param, body)| Expr::Lambda(Box::new(Lambda { param, body })))
 }
 
 fn application() -> impl Parser<Item = Expr, ParseError = String> {
     Rc::new(
-        parens(pure::run(|state| expr().parse(state)))
+        parens(expr_rec())
             .falling_back(identifier().map(Expr::Lookup))
             .falling_back(literal_integer().map(Expr::LitInteger)),
     )
