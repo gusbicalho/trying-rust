@@ -1,5 +1,5 @@
 mod internals;
-pub use internals::Parser;
+pub use internals::{Parser, ParserState, ParserSpan, ParserPos};
 
 pub mod adapters;
 pub mod delim;

@@ -208,3 +208,68 @@ where
         (**self).parse(state)
     }
 }
+
+// impl<T> Parser for &T
+// where
+//     T: Parser,
+// {
+//     type Item = T::Item;
+
+//     type ParseError = T::ParseError;
+
+//     fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+//         (*self).parse(state)
+//     }
+// }
+
+// impl<T> Parser for Box<T>
+// where
+//     T: Parser,
+// {
+//     type Item = T::Item;
+
+//     type ParseError = T::ParseError;
+
+//     fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+//         (*self).parse(state)
+//     }
+// }
+
+// impl<T> Parser for Rc<T>
+// where
+//     T: Parser,
+// {
+//     type Item = T::Item;
+
+//     type ParseError = T::ParseError;
+
+//     fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+//         (*self).parse(state)
+//     }
+// }
+
+// impl<T, F> Parser for Lazy<T, F>
+// where
+//     T: Parser,
+// {
+//     type Item = T::Item;
+
+//     type ParseError = T::ParseError;
+
+//     fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+//         (*self).parse(state)
+//     }
+// }
+
+// impl<T> Parser for OnceCell<T>
+// where
+//     T: Parser,
+// {
+//     type Item = T::Item;
+
+//     type ParseError = T::ParseError;
+
+//     fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+//         self.wait().parse(state)
+//     }
+// }

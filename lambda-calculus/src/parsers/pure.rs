@@ -54,3 +54,27 @@ where
         (self.make_result)()
     }
 }
+
+#[derive(Derivative)]
+#[derivative(Copy, Clone)]
+pub struct Run<F> {
+    run_parse: F,
+}
+
+pub fn run<F>(run_parse: F) -> Run<F>
+where
+    Run<F>: Parser,
+{
+    Run { run_parse }
+}
+
+impl<F, R, E> Parser for Run<F>
+where
+    F: Fn(&mut ParserState) -> Result<R, E>,
+{
+    type Item = R;
+    type ParseError = E;
+    fn parse(&self, state: &mut ParserState) -> Result<Self::Item, Self::ParseError> {
+        (self.run_parse)(state)
+    }
+}

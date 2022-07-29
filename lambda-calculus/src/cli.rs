@@ -8,19 +8,15 @@ use crate::pipeline::parser;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-struct Runner {
-    parser: parser::ParseStmt,
-}
+struct Runner {}
 
 impl Runner {
     fn new() -> Self {
-        Self {
-            parser: parser::ParseStmt::new(),
-        }
+        Self {}
     }
 
     fn run_stmt(&self, line: String) -> Result<(), Box<dyn Error>> {
-        match self.parser.parse(&line) {
+        match parser::parse_stmt(&line) {
             Err(parse_err) => Err(parse_err)?,
             Ok(stmt) => {
                 println!("{:#?}", stmt);
