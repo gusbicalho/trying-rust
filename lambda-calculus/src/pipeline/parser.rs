@@ -56,7 +56,11 @@ fn lambda() -> impl Parser<Item = Expr, ParseError = String> {
 fn application() -> impl Parser<Item = Expr, ParseError = String> {
     Rc::new(
         parens(expr_rec())
-            .falling_back(identifier().map(Expr::Lookup))
+            .falling_back(
+                identifier()
+                    .also(delim::whitespace().skip_many())
+                    .map(Expr::Lookup),
+            )
             .falling_back(literal_integer().map(Expr::LitInteger)),
     )
     .at_least_one()
@@ -89,15 +93,13 @@ where
 }
 
 fn identifier() -> impl Parser<Item = String, ParseError = String> {
-    string::many_chars_matching(|c| char::is_ascii_lowercase(&c))
-        .validate(|identifier| {
-            if identifier.is_empty() {
-                Some("Expected identifier (sequence of lowercase ascii letters)".to_string())
-            } else {
-                None
-            }
-        })
-        .also(delim::whitespace().skip_many())
+    string::many_chars_matching(|c| char::is_ascii_lowercase(&c)).validate(|identifier| {
+        if identifier.is_empty() {
+            Some("Expected identifier (sequence of lowercase ascii letters)".to_string())
+        } else {
+            None
+        }
+    })
 }
 
 fn literal_integer() -> impl Parser<Item = i64, ParseError = String> {
