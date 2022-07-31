@@ -1,12 +1,12 @@
 [workspace]
 
 members = [
-    # "cacher",
-    # "collections-exercises",
-    # "guessing_game",
-    # "hello_cargo",
+    "cacher",
+    "collections-exercises",
+    "guessing_game",
+    "hello_cargo",
     "lambda-calculus",
-    # "minigrep",
-    # "rectangles",
-    # "restaurant",
+    "minigrep",
+    "rectangles",
+    "restaurant",
 ]
