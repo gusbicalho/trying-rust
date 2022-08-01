@@ -9,4 +9,5 @@ members = [
     "minigrep",
     "rectangles",
     "restaurant",
+    "too-many-lists",
 ]
