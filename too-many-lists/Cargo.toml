@@ -1,3 +1,5 @@
+# Code from https://rust-unofficial.github.io/too-many-lists/
+
 [package]
 name = "too-many-lists"
 version = "0.1.0"

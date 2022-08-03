@@ -1,3 +1,5 @@
+#![allow(clippy::neg_cmp_op_on_partial_ord)]
+
 use std::cmp::Ordering;
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
@@ -1002,7 +1004,7 @@ mod test {
 
     #[test]
     fn test_ord_nan() {
-        let nan = 0.0f64 / 0.0;
+        let nan = f64::NAN;
         let n = list_from(&[nan]);
         let m = list_from(&[nan]);
         assert!(!(n < m));
@@ -1192,6 +1194,7 @@ mod test {
 
     fn check_links<T: Eq + std::fmt::Debug>(list: &LinkedList<T>) {
         let from_front: Vec<_> = list.iter().collect();
+        #[allow(clippy::needless_collect)]
         let from_back: Vec<_> = list.iter().rev().collect();
         let re_reved: Vec<_> = from_back.into_iter().rev().collect();
 
